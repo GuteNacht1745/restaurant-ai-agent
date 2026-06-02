@@ -1,16 +1,26 @@
 from Models.reservations import ReservationExtraction
 import dateparser
+from Logic.ai_logic import normalize_datetime_ai
+
 
 def normalize_datetime(value: str | None):
     if not value:
         return None
-    return dateparser.parse(
+    datetime_parsed = dateparser.parse(
         value,
         settings = {
             "TIMEZONE": "Europe/Berlin",
-            "RETURN_AS_TIMEZONE_AWARE": True
+            "RETURN_AS_TIMEZONE_AWARE": True,
+            "PREFER_DATES_FROM": "future"
         }
     )
+    if datetime_parsed:
+        print(
+            "Parsed using dateparser"
+        )
+        return datetime_parsed
+    print("Fallback to OpenAI")
+    return normalize_datetime_ai(value)
 
 
 
