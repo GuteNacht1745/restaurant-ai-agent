@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Vapi Web SDK Test</title>
+  </head>
+  <body>
+    <button id="start">Start call</button>
+    <button id="stop">Stop</button>
+
+<script type="module">
+  import VapiMod from "https://cdn.jsdelivr.net/npm/@vapi-ai/web/+esm";
+const Vapi = VapiMod.default ?? VapiMod;
+
+  const vapi = new Vapi("ff12bece-fee3-4dca-b7ae-b2772910bac0"); // public key
+
+  vapi.on("call-start", () => console.log("call-start"));
+  vapi.on("call-end", () => console.log("call-end"));
+  vapi.on("error", (e) => console.error("error", e));
+
+  vapi.on("message", (msg) => console.log("EVENT:", msg));
+
+  document.getElementById("start").onclick = async () => {
+    console.log("starting...");
+    await vapi.start("a6f5524d-70c2-4f80-a3cf-3411839a0cba");
+  };
+
+  document.getElementById("stop").onclick = () => vapi.stop();
+</script>
+  </body>
+</html>

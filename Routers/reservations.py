@@ -34,10 +34,16 @@ def webhook(event: dict):
       # Return ReservationExtraction object
 
     if event_type == "end-of-call-report":
+        print("END OF CALL")
+
         call_type, extracted_data, raw_structured_output = parse_structured_output(event)
+        print(call_type)
+
+        print(raw_structured_output)
+
 
         call_id = event["message"]["call"]["id"]
-        phone_number = event["message"]["customer"]["number"]
+        phone_number = event.get("message", {}).get("customer", {}).get("number")
         started_at = event["message"]["startedAt"]
         ended_at = event["message"]["endedAt"]
         ended_reason = event["message"]["endedReason"]
@@ -60,7 +66,7 @@ def webhook(event: dict):
             structured_output = raw_structured_output,
             call_type = call_type
         )
-        insert_record("call_logs", call_validated.model_dump(mode = "json"))
+        insert_record("call_logs", call_validated.model_dump(mode = "json", exclude_none = True))
 
 
         # Reservation creation process

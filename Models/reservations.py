@@ -29,7 +29,7 @@ class CallLogsValidated(BaseModel):
     summary: str
     transcript: str
     recording_url: str
-    phone_number: str
+    phone_number: Optional[str] = None
     started_at: datetime
     ended_at: datetime
     duration_seconds: float
