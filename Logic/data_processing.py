@@ -2,7 +2,6 @@ from Models.reservations import ReservationExtraction
 import dateparser
 from Logic.ai_logic import normalize_datetime_ai
 
-
 def normalize_datetime(value: str | None):
     if not value:
         return None
@@ -21,8 +20,6 @@ def normalize_datetime(value: str | None):
         return datetime_parsed
     print("Fallback to OpenAI")
     return normalize_datetime_ai(value)
-
-
 
 def parse_structured_output(data: dict) -> tuple[str | None, ReservationExtraction, dict | None]:
     structured_output = (
@@ -47,7 +44,7 @@ def parse_structured_output(data: dict) -> tuple[str | None, ReservationExtracti
 
     elif call_type == "pickup_order":
         output = ReservationExtraction(customer_name = pickup_order.get("name"),
-                                     items = pickup_order.get("items"),
+                                     items = pickup_order.get("items", []),
                                      pickup_time = normalize_datetime(pickup_order.get("pickupTimeRaw")),
                                      special_request = pickup_order.get("specialRequest")
                                      )
@@ -61,9 +58,6 @@ def parse_structured_output(data: dict) -> tuple[str | None, ReservationExtracti
         output = ReservationExtraction()
 
     return call_type, output, structured_output
-
-
-
 
 def find_missing_field(structured_output: ReservationExtraction, call_type: str) -> list[str]:
 
@@ -80,5 +74,5 @@ def find_missing_field(structured_output: ReservationExtraction, call_type: str)
         ]
     }
 
-    return [field for field in require_field.get(call_type, []) if getattr(structured_output, field) is None]
+    return [field for field in require_field.get(call_type, []) if not getattr(structured_output, field)]
 

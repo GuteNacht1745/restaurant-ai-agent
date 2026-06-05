@@ -1,20 +1,23 @@
 from fastapi import APIRouter, HTTPException
+
+from Logic.agent_tools import search_menu
 from Logic.data_processing import find_missing_field, parse_structured_output
 from Models.reservations import ReservationOutput, CallOutputValidated, ReservationExtraction, \
     CallLogsValidated, ItemValidated
-from Logic.db_logic import get_reservation, list_reservation, insert_record
+from Logic.db_logic import get_record, list_reservation, insert_record
+import json
 
 router = APIRouter()
 
-@router.get("/reservations/{reservation_id}", response_model=ReservationOutput)
-def get_call(reservation_id: int) -> ReservationOutput:
+@router.get("/reservations/{reservation_id}")
+def get_call(reservation_id: int):
     try:
-        call = get_reservation("reservations", "reservation_id", reservation_id)
+        call = get_record("reservations", "reservation_id", reservation_id)
 
-        if not call.data:
+        if not call:
             raise HTTPException(status_code=404, detail="Reservation not found")
 
-        return call.data[0]
+        return call
 
     except HTTPException:
         raise
@@ -31,16 +34,20 @@ def get_calls():
 def webhook(event: dict):
 
     event_type = event.get("message", {}).get("type", None)
-      # Return ReservationExtraction object
+
+    if event_type == "tool-calls":
+        tool = event.get("message", {}).get("toolCallList", [{}])[0]
+        tool_id = tool.get("id")
+        tool_name = tool.get("function", {}).get("name")
+        if tool_name == "search_menu":
+            argument = tool.get("function", {}).get("arguments")
+            item_number = argument.get("item_number")
+            return search_menu(item_number, tool_id)
+
 
     if event_type == "end-of-call-report":
-        print("END OF CALL")
 
         call_type, extracted_data, raw_structured_output = parse_structured_output(event)
-        print(call_type)
-
-        print(raw_structured_output)
-
 
         call_id = event["message"]["call"]["id"]
         phone_number = event.get("message", {}).get("customer", {}).get("number")

@@ -1,7 +1,12 @@
 from Database.database import sb
 
-def get_reservation(table, parameter, value):
-    return sb.table(table).select("*").eq(parameter, value).execute()
+def get_record(table, parameter, value) -> dict | None:
+
+    response = sb.table(table).select("*").eq(parameter, value).execute()
+
+    if not response.data:
+        return None
+    return response.data[0]
 
 def list_reservation():
     return sb.table("reservations").select("*").execute()

@@ -12,7 +12,7 @@
   import VapiMod from "https://cdn.jsdelivr.net/npm/@vapi-ai/web/+esm";
 const Vapi = VapiMod.default ?? VapiMod;
 
-  const vapi = new Vapi("ff12bece-fee3-4dca-b7ae-b2772910bac0"); // public key
+  const vapi = new Vapi("07493dff-02b6-41d3-a39d-97c23d362a4f"); // public key
 
   vapi.on("call-start", () => console.log("call-start"));
   vapi.on("call-end", () => console.log("call-end"));
@@ -22,7 +22,7 @@ const Vapi = VapiMod.default ?? VapiMod;
 
   document.getElementById("start").onclick = async () => {
     console.log("starting...");
-    await vapi.start("a6f5524d-70c2-4f80-a3cf-3411839a0cba");
+    await vapi.start("2c15adbf-c867-45b5-9a07-68c185174e1a");
   };
 
   document.getElementById("stop").onclick = () => vapi.stop();
