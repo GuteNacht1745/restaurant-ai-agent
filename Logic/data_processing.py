@@ -1,6 +1,9 @@
 from Models.reservations import ReservationExtraction
 import dateparser
 from Logic.ai_logic import normalize_datetime_ai
+from difflib import SequenceMatcher
+import unicodedata
+from Database.database import sb
 
 def normalize_datetime(value: str | None):
     if not value:
@@ -20,6 +23,23 @@ def normalize_datetime(value: str | None):
         return datetime_parsed
     print("Fallback to OpenAI")
     return normalize_datetime_ai(value)
+
+def normalize_name(text):
+    text = str(text).lower().strip()
+
+    replacements = {
+        "ß": "ss",
+        "ü": "ue",
+        "ä": "ae",
+        "ö": "oe"
+    }
+
+    for old, new in replacements.items():
+        text = text.replace(old, new)
+
+    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
+
+    return text
 
 def parse_structured_output(data: dict) -> tuple[str | None, ReservationExtraction, dict | None]:
     structured_output = (
@@ -76,3 +96,24 @@ def find_missing_field(structured_output: ReservationExtraction, call_type: str)
 
     return [field for field in require_field.get(call_type, []) if not getattr(structured_output, field)]
 
+def search_similarity(text):
+    rows = sb.table("menu").select("*").execute().data
+
+    best_item = None
+    best_score = 0
+    best_candidate_text = None
+
+    for row in rows:
+        names = row.get("searchable_names") or []
+        for name in names:
+            score = SequenceMatcher(None, text, name).ratio()
+            if score > best_score:
+                best_score = score
+                best_item = row
+                best_candidate_text = name
+
+    return {
+        "item": best_item,
+        "score": round(best_score, 2),
+        "candidate_text": best_candidate_text
+    }

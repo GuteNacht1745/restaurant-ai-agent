@@ -41,7 +41,8 @@ class ItemValidated(BaseModel):
     order_id: Optional[int] = None
     item_number: Optional[str] = None
     item_name: Optional[str] = None
-    quantity: Optional[int] = None
+    extras: Optional[list] = None
+    special_request: Optional[str] = None
 
 class ReservationOutput(BaseModel):
     id: int

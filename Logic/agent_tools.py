@@ -1,16 +1,51 @@
-from Logic.db_logic import get_record
+from Logic.db_logic import get_record, get_record_contains
+from Logic.data_processing import normalize_name, search_similarity
+from Database.database import sb
 
-def search_menu(item_number: str, tool_call_id):
-    menu_item = get_record("menu", "item_number", item_number)
+def verify_scoring(score, raw_text, method, candidate_text):
+    inserted_data = {
+        "score": score,
+        "method": method,
+        "raw_text": raw_text,
+        "candidate_text": candidate_text
+    }
+    sb.table("order_item_resolution_log").insert(inserted_data).execute()
 
-    if menu_item is None:
+def search_menu(tool_call_id, item_number: str | None = None, item_name: str | None = None):
+
+    menu_item = None
+    needs_confirmation = False
+    score = None
+    method = None
+
+    if item_number:
+        item_number = item_number.strip().upper()
+        menu_item = get_record("menu", "item_number", item_number)
+
+    elif item_name:
+        item_name = normalize_name(item_name)
+        menu_item = get_record_contains("menu", "searchable_names", [item_name])
+        if not menu_item:
+            method = "similarity"
+            similarity_result = search_similarity(item_name)
+            score = similarity_result["score"]
+            if score > 0.8:
+                menu_item = similarity_result["item"]
+            elif score > 0:
+                menu_item = similarity_result["item"]
+                needs_confirmation = True
+            if score is not None:
+                verify_scoring(score, raw_text = item_name, method = method, candidate_text = similarity_result["candidate_text"])
+
+    if not menu_item:
         return {
             "results":[
             {
                 "toolCallId":tool_call_id,
                 "result":{
                     "found": False,
-                    "item_number": item_number
+                    "item_number": item_number,
+                    "item_name": item_name
             }
             }
         ]
@@ -34,6 +69,7 @@ def search_menu(item_number: str, tool_call_id):
         "toolCallId": tool_call_id,
         "result": {
         "found": True,
+        "needs_confirmation": needs_confirmation,
         "item_number": menu_item["item_number"],
         "item_name_vi": menu_item["item_name_vi"],
         "item_name_de": menu_item["item_name_de"],

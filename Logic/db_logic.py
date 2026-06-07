@@ -1,9 +1,17 @@
+import json
+
 from Database.database import sb
 
 def get_record(table, parameter, value) -> dict | None:
 
     response = sb.table(table).select("*").eq(parameter, value).execute()
 
+    if not response.data:
+        return None
+    return response.data[0]
+
+def get_record_contains(table: str, parameter: str, values: list[str]) -> dict | None:
+    response = sb.table(table).select("*").filter(parameter, "cs", json.dumps(values)).execute()
     if not response.data:
         return None
     return response.data[0]
@@ -19,4 +27,3 @@ def update_reservation(table, new_data, parameter, value):
 
 def delete_reservation(table, parameter, value):
     sb.table(table).delete().eq(parameter, value).execute()
-

@@ -40,9 +40,10 @@ def webhook(event: dict):
         tool_id = tool.get("id")
         tool_name = tool.get("function", {}).get("name")
         if tool_name == "search_menu":
-            argument = tool.get("function", {}).get("arguments")
-            item_number = argument.get("item_number")
-            return search_menu(item_number, tool_id)
+            argument = tool.get("function", {}).get("arguments", {})
+            item_number = argument.get("item_number", "")
+            item_name = argument.get("item_name", "")
+            return search_menu(tool_id, item_number , item_name)
 
 
     if event_type == "end-of-call-report":
@@ -112,10 +113,11 @@ def webhook(event: dict):
                     order_id = order_id,
                     item_number = item.get("itemNumber"),
                     item_name = item.get("itemName"),
-                    quantity = item.get("quantity")
+                    extras = item.get("selectedExtra"),
+                    special_request = item.get("specialRequest")
                 )
 
-                insert_record("pickup_order_items", item_validated.model_dump(mode = "json"))
+                insert_record("pickup_order_items", item_validated.model_dump(mode = "json", exclude_none = True))
 
         return {
             "message": "Data added successfully."
