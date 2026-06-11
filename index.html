@@ -2,30 +2,65 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Vapi Web SDK Test</title>
+    <title>Vapi Web SDK Test (Custom Buttons + JWT)</title>
   </head>
   <body>
     <button id="start">Start call</button>
-    <button id="stop">Stop</button>
+    <button id="stop" disabled>Stop</button>
 
-<script type="module">
-  import VapiMod from "https://cdn.jsdelivr.net/npm/@vapi-ai/web/+esm";
-const Vapi = VapiMod.default ?? VapiMod;
+    <pre id="log" style="white-space: pre-wrap;"></pre>
 
-  const vapi = new Vapi("07493dff-02b6-41d3-a39d-97c23d362a4f"); // public key
+    <script type="module">
+      import VapiMod from "https://cdn.jsdelivr.net/npm/@vapi-ai/web@2.5.2/+esm";
+      const Vapi = VapiMod.default ?? VapiMod;
 
-  vapi.on("call-start", () => console.log("call-start"));
-  vapi.on("call-end", () => console.log("call-end"));
-  vapi.on("error", (e) => console.error("error", e));
+      const ASSISTANT_ID = "e183c152-ceef-4e94-886e-96994b9a1bdd";
+      const BACKEND_BASE = "http://localhost:8000";
 
-  vapi.on("message", (msg) => console.log("EVENT:", msg));
+      const logEl = document.getElementById("log");
+      const log = (...args) => {
+        console.log(...args);
+        logEl.textContent += args.map(a => (typeof a === "string" ? a : JSON.stringify(a, null, 2))).join(" ") + "\n";
+      };
 
-  document.getElementById("start").onclick = async () => {
-    console.log("starting...");
-    await vapi.start("2c15adbf-c867-45b5-9a07-68c185174e1a");
-  };
+      let vapi;
 
-  document.getElementById("stop").onclick = () => vapi.stop();
-</script>
+      async function getJwt() {
+        const r = await fetch(`${BACKEND_BASE}/vapi-web-token`, { method: "POST" });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(`Token error ${r.status}: ${JSON.stringify(data)}`);
+        if (!data.token) throw new Error(`No token returned: ${JSON.stringify(data)}`);
+        return data.token;
+      }
+
+      document.getElementById("start").onclick = async () => {
+        try {
+          log("starting...");
+          const token = await getJwt();
+          log("got jwt");
+
+          vapi = new Vapi(token);
+
+          vapi.on("call-start", () => {
+            log("call-start");
+            document.getElementById("stop").disabled = false;
+          });
+          vapi.on("call-end", () => {
+            log("call-end");
+            document.getElementById("stop").disabled = true;
+          });
+          vapi.on("message", (msg) => log("EVENT:", msg));
+          vapi.on("error", (e) => log("error:", e));
+
+          await vapi.start(ASSISTANT_ID);
+        } catch (e) {
+          log("FAILED:", String(e));
+        }
+      };
+
+      document.getElementById("stop").onclick = () => {
+        if (vapi) vapi.stop();
+      };
+    </script>
   </body>
 </html>

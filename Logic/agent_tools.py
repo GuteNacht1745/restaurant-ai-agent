@@ -1,6 +1,8 @@
 from Logic.db_logic import get_record, get_record_contains
 from Logic.data_processing import normalize_name, search_similarity
 from Database.database import sb
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 def verify_scoring(score, raw_text, method, candidate_text):
     inserted_data = {
@@ -39,8 +41,6 @@ def search_menu(tool_call_id, item_number: str | None = None, item_name: str | N
 
     if not menu_item:
         return {
-            "results":[
-            {
                 "toolCallId":tool_call_id,
                 "result":{
                     "found": False,
@@ -48,8 +48,7 @@ def search_menu(tool_call_id, item_number: str | None = None, item_name: str | N
                     "item_name": item_name
             }
             }
-        ]
-        }
+
 
     category = get_record("menu_categories", "category_id", menu_item["category_id"])
     allowed_extra_ids = menu_item.get("allowed_extra_ids") or []
@@ -64,8 +63,6 @@ def search_menu(tool_call_id, item_number: str | None = None, item_name: str | N
             })
 
     return {
-        "results":[
-        {
         "toolCallId": tool_call_id,
         "result": {
         "found": True,
@@ -84,5 +81,46 @@ def search_menu(tool_call_id, item_number: str | None = None, item_name: str | N
         "available_extras": available_extras
     }
         }
-    ]
+
+def get_current_time(tool_call_id):
+    tz = ZoneInfo("Europe/Berlin")
+    now = datetime.now(tz = tz)
+
+    return  {
+                "toolCallId": tool_call_id,
+                "result": {
+                    "timezone": "Europe/Berlin",
+                    "nowIso": now.isoformat(),
+                    "unixMs": int(now.timestamp() * 1000),
+                    "date": now.strftime("%Y-%m-%d"),
+                    "time": now.strftime("%H:%M"),
+                    "weekday": now.strftime("%A"),
+                    "nowHuman": now.strftime("%A, %d %B %Y, %H:%M")
+                }
+            }
+
+TOOL_REGISTRY = {
+    "search_menu": search_menu,
+    "get_current_time": get_current_time
+}
+
+def run_tools(event: dict):
+    tool_results = []
+    tool_call_list = event.get("message", {}).get("toolCallList", [{}])
+    for tool in tool_call_list:
+        tool_id = tool.get("id")
+        tool_name = tool.get("function", {}).get("name")
+        arguments = tool.get("function", {}).get("arguments", {})
+
+        tool_func = TOOL_REGISTRY.get(tool_name)
+
+        if not tool_func:
+            continue
+
+        result = tool_func(tool_call_id = tool_id, **arguments)
+
+        tool_results.append(result)
+
+    return {
+        "results": tool_results
     }

@@ -45,10 +45,11 @@ def parse_structured_output(data: dict) -> tuple[str | None, ReservationExtracti
     structured_output = (
         data
         .get("message", {})
-        .get("analysis", {})
-        .get("structuredData", {})
+        .get("artifact", {})
+        .get("structuredOutputs", {})
+        .get("f36ee908-fbeb-4545-858c-32b0a36eacda", {})
+        .get("result", {})
     )
-
     call_type = structured_output.get("callType")
 
     reservation = structured_output.get("reservation") or {}
@@ -56,14 +57,14 @@ def parse_structured_output(data: dict) -> tuple[str | None, ReservationExtracti
     other = structured_output.get("other") or {}
 
     if call_type == "reservation":
-        output =  ReservationExtraction(customer_name = reservation.get("name"),
+        output =  ReservationExtraction(customer_name = reservation.get("customer_name"),
                                      party_size = reservation.get("partySize"),
                                      reservation_time = normalize_datetime(reservation.get("dateTimeRaw")),
                                      special_request = reservation.get("specialRequest")
                                      )
 
     elif call_type == "pickup_order":
-        output = ReservationExtraction(customer_name = pickup_order.get("name"),
+        output = ReservationExtraction(customer_name = pickup_order.get("customer_name"),
                                      items = pickup_order.get("items", []),
                                      pickup_time = normalize_datetime(pickup_order.get("pickupTimeRaw")),
                                      special_request = pickup_order.get("specialRequest")

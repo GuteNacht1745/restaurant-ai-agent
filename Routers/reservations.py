@@ -1,11 +1,12 @@
 from fastapi import APIRouter, HTTPException
-
-from Logic.agent_tools import search_menu
+from Logic.agent_tools import run_tools
 from Logic.data_processing import find_missing_field, parse_structured_output
 from Models.reservations import ReservationOutput, CallOutputValidated, ReservationExtraction, \
     CallLogsValidated, ItemValidated
 from Logic.db_logic import get_record, list_reservation, insert_record
-import json
+import jwt
+import time
+from settings import VAPI_PRIVATE_KEY, VAPI_ORG_ID
 
 router = APIRouter()
 
@@ -36,15 +37,7 @@ def webhook(event: dict):
     event_type = event.get("message", {}).get("type", None)
 
     if event_type == "tool-calls":
-        tool = event.get("message", {}).get("toolCallList", [{}])[0]
-        tool_id = tool.get("id")
-        tool_name = tool.get("function", {}).get("name")
-        if tool_name == "search_menu":
-            argument = tool.get("function", {}).get("arguments", {})
-            item_number = argument.get("item_number", "")
-            item_name = argument.get("item_name", "")
-            return search_menu(tool_id, item_number , item_name)
-
+        return run_tools(event)
 
     if event_type == "end-of-call-report":
 
@@ -114,7 +107,8 @@ def webhook(event: dict):
                     item_number = item.get("itemNumber"),
                     item_name = item.get("itemName"),
                     extras = item.get("selectedExtra"),
-                    special_request = item.get("specialRequest")
+                    special_request = item.get("specialRequest"),
+                    variant = item.get("variant")
                 )
 
                 insert_record("pickup_order_items", item_validated.model_dump(mode = "json", exclude_none = True))
@@ -125,3 +119,34 @@ def webhook(event: dict):
     return {
         "status": "ok"
     }
+
+@router.get("/health")
+def health():
+    return {
+        "message": "oke"
+    }
+
+@router.post("/vapi-web-token")
+def vapi_web_token():
+    """
+    Returns a short-lived JWT that the browser can use to initialize the Vapi Web SDK.
+    This avoids calling Vapi endpoints directly from the browser (CORS issues).
+    """
+    vapi_private_key = VAPI_PRIVATE_KEY
+    if not vapi_private_key:
+        raise HTTPException(status_code=500, detail="VAPI_PRIVATE_KEY is not set")
+
+    now = int(time.time())
+
+    # If you know your orgId, set VAPI_ORG_ID in env and we'll include it.
+    vapi_org_id = VAPI_ORG_ID
+    payload = {
+        "iat": now,
+        "exp": now + 300,  # 5 minutes
+    }
+    if vapi_org_id:
+        payload["orgId"] = vapi_org_id
+
+    token = jwt.encode(payload, vapi_private_key, algorithm="HS256")
+
+    return {"token": token}
