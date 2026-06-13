@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
@@ -46,9 +46,25 @@ class ItemValidated(BaseModel):
     variant: Optional[str] = None
 
 class ReservationOutput(BaseModel):
-    id: int
-    name: str
-    phone_number: str
-    number_of_people: int
+    reservation_id: int
+    call_id: UUID
+    customer_name: str
     reservation_time: datetime
+    party_size: int
+    special_request: str | None
+    phone_number: str | None
+    missing_fields: list
+    is_complete: bool
+    status: str
 
+
+class ReservationUpdate(BaseModel):
+    customer_name: Optional[str] = None
+    reservation_time: Optional[datetime] = None
+    special_request: Optional[str] = None
+    party_size: Optional[int] = None
+
+class OrderUpdate(BaseModel):
+    customer_name: Optional[str] = None
+    pickup_time: Optional[datetime] = None
+    special_request: Optional[str] = None

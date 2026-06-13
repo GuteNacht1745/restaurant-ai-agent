@@ -11,9 +11,9 @@ from settings import VAPI_PRIVATE_KEY, VAPI_ORG_ID
 router = APIRouter()
 
 @router.get("/reservations/{reservation_id}")
-def get_call(reservation_id: int):
+def get_call(reservation_id: int) -> dict:
     try:
-        call = get_record("reservations", "reservation_id", reservation_id)
+        call = get_record("reservations", {"reservation_id": reservation_id})
 
         if not call:
             raise HTTPException(status_code=404, detail="Reservation not found")
@@ -27,12 +27,12 @@ def get_call(reservation_id: int):
         raise HTTPException(status_code = 500, detail = "Database error")
 
 @router.get("/reservations", response_model=list[ReservationOutput])
-def get_calls():
+def get_calls() -> list[ReservationOutput]:
     list_data = list_reservation()
     return list_data.data
 
 @router.post("/webhook")
-def webhook(event: dict):
+def webhook(event: dict) -> dict:
 
     event_type = event.get("message", {}).get("type", None)
 
@@ -50,7 +50,8 @@ def webhook(event: dict):
         ended_reason = event["message"]["endedReason"]
         duration_seconds = event["message"]["durationSeconds"]
         recording_url = event["message"]["recordingUrl"]
-        summary = event["message"]["summary"]
+        summary = (event.get("message", {}).get("artifact", {}).get("structuredOutputs", {})
+                   .get("f36ee908-fbeb-4545-858c-32b0a36eacda", {}).get("result", {}).get("summary")) or "Summary unavailable"
         transcript = event["message"]["transcript"]
 
         # Call log process
@@ -69,13 +70,17 @@ def webhook(event: dict):
         )
         insert_record("call_logs", call_validated.model_dump(mode = "json", exclude_none = True))
 
+        if not raw_structured_output:
+            return {
+                "message": "Call logged. No structured output."
+            }
 
         # Reservation creation process
         missing_fields = find_missing_field(extracted_data, call_type) # Return a list
 
         is_complete = not missing_fields
 
-        if call_type == "reservation":
+        if call_type == "reservation_created":
             reservation_validated = CallOutputValidated(
                 customer_name = extracted_data.customer_name,
                 party_size = extracted_data.party_size,
@@ -88,7 +93,7 @@ def webhook(event: dict):
             )
             insert_record("reservations", reservation_validated.model_dump(mode = "json", exclude_none = True))
 
-        elif call_type == "pickup_order":
+        elif call_type == "pickup_order_created":
             order_validated = CallOutputValidated(
                 customer_name = extracted_data.customer_name,
                 pickup_time = extracted_data.pickup_time,
@@ -117,7 +122,7 @@ def webhook(event: dict):
             "message": "Data added successfully."
         }
     return {
-        "status": "ok"
+        "status": "okeee"
     }
 
 @router.get("/health")

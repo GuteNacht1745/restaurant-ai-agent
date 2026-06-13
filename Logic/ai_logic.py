@@ -1,3 +1,5 @@
+from zoneinfo import ZoneInfo
+
 from fastapi import HTTPException
 from datetime import datetime
 from openai import OpenAI
@@ -5,7 +7,7 @@ from settings import OPENAI_API_KEY
 
 client = OpenAI(api_key = OPENAI_API_KEY)
 
-def normalize_datetime_ai(raw_time):
+def normalize_datetime_ai(raw_time: str) -> str:
     try:
         response = client.responses.create(
                 model=
@@ -14,7 +16,7 @@ def normalize_datetime_ai(raw_time):
                 input=
                 f"""
                 Current datetime:
-                {datetime.now().isoformat()}
+                {datetime.now(ZoneInfo("Europe/Berlin")).isoformat()}
                 
                 Timezone:
                 Europe/Berlin

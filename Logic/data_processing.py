@@ -1,3 +1,5 @@
+from fastapi.encoders import isoformat
+from datetime import datetime
 from Models.reservations import ReservationExtraction
 import dateparser
 from Logic.ai_logic import normalize_datetime_ai
@@ -5,7 +7,7 @@ from difflib import SequenceMatcher
 import unicodedata
 from Database.database import sb
 
-def normalize_datetime(value: str | None):
+def normalize_datetime(value: str | None) -> datetime | None:
     if not value:
         return None
     datetime_parsed = dateparser.parse(
@@ -22,9 +24,9 @@ def normalize_datetime(value: str | None):
         )
         return datetime_parsed
     print("Fallback to OpenAI")
-    return normalize_datetime_ai(value)
+    return datetime.fromisoformat(normalize_datetime_ai(value))
 
-def normalize_name(text):
+def normalize_name(text: str) -> str:
     text = str(text).lower().strip()
 
     replacements = {
@@ -50,20 +52,22 @@ def parse_structured_output(data: dict) -> tuple[str | None, ReservationExtracti
         .get("f36ee908-fbeb-4545-858c-32b0a36eacda", {})
         .get("result", {})
     )
+    if not structured_output:
+        return None, ReservationExtraction(), None
     call_type = structured_output.get("callType")
 
-    reservation = structured_output.get("reservation") or {}
-    pickup_order = structured_output.get("pickupOrder") or {}
+    reservation = structured_output.get("reservation_created") or {}
+    pickup_order = structured_output.get("pickup_order_created") or {}
     other = structured_output.get("other") or {}
 
-    if call_type == "reservation":
+    if call_type == "reservation_created":
         output =  ReservationExtraction(customer_name = reservation.get("customer_name"),
                                      party_size = reservation.get("partySize"),
                                      reservation_time = normalize_datetime(reservation.get("dateTimeRaw")),
                                      special_request = reservation.get("specialRequest")
                                      )
 
-    elif call_type == "pickup_order":
+    elif call_type == "pickup_order_created":
         output = ReservationExtraction(customer_name = pickup_order.get("customer_name"),
                                      items = pickup_order.get("items", []),
                                      pickup_time = normalize_datetime(pickup_order.get("pickupTimeRaw")),
@@ -83,12 +87,12 @@ def parse_structured_output(data: dict) -> tuple[str | None, ReservationExtracti
 def find_missing_field(structured_output: ReservationExtraction, call_type: str) -> list[str]:
 
     require_field = {
-        "reservation":[
+        "reservation_created":[
             "customer_name",
             "party_size",
             "reservation_time"
         ],
-        "pickup_order":[
+        "pickup_order_created":[
             "customer_name",
             "items",
             "pickup_time"
@@ -97,7 +101,7 @@ def find_missing_field(structured_output: ReservationExtraction, call_type: str)
 
     return [field for field in require_field.get(call_type, []) if not getattr(structured_output, field)]
 
-def search_similarity(text):
+def search_similarity(text: str) -> dict:
     rows = sb.table("menu").select("*").execute().data
 
     best_item = None

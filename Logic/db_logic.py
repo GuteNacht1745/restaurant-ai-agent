@@ -2,9 +2,15 @@ import json
 
 from Database.database import sb
 
-def get_record(table, parameter, value) -> dict | None:
+def get_record(table, filters: dict) -> dict | None:
 
-    response = sb.table(table).select("*").eq(parameter, value).execute()
+    query = sb.table(table).select("*")
+
+    for column, value in filters.items():
+        if value is not None:
+            query = query.eq(column, value)
+
+    response = query.execute()
 
     if not response.data:
         return None
@@ -22,8 +28,6 @@ def list_reservation():
 def insert_record(table, new_data):
     return sb.table(table).insert(new_data).execute()
 
-def update_reservation(table, new_data, parameter, value):
-    sb.table(table).update(new_data).eq(parameter, value).execute()
-
-def delete_reservation(table, parameter, value):
-    sb.table(table).delete().eq(parameter, value).execute()
+def update_record(table: str, new_data: dict, parameter: str, value) -> bool:
+    response = sb.table(table).update(new_data).eq(parameter, value).execute()
+    return bool(response.data)
