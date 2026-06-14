@@ -1,5 +1,4 @@
-from fastapi.encoders import isoformat
-from datetime import datetime
+from datetime import datetime, timedelta
 from Models.reservations import ReservationExtraction
 import dateparser
 from Logic.ai_logic import normalize_datetime_ai
@@ -121,4 +120,12 @@ def search_similarity(text: str) -> dict:
         "item": best_item,
         "score": round(best_score, 2),
         "candidate_text": best_candidate_text
+    }
+
+def create_time_range(column: str, raw_reservation_time: str, tolerance_minutes: int = 15) -> dict[str, tuple[str, str]]:
+    requested = normalize_datetime(raw_reservation_time)
+    earliest = requested - timedelta(minutes = tolerance_minutes)
+    latest = requested + timedelta(minutes = tolerance_minutes)
+    return {
+        column: (earliest.isoformat(), latest.isoformat())
     }

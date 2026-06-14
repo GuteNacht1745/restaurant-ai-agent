@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
+
 class ReservationExtraction(BaseModel):
     customer_name: Optional[str] = None
     party_size: Optional[int] = None

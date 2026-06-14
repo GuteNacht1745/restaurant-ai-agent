@@ -1,5 +1,5 @@
 from Logic.db_logic import get_record, get_record_contains, update_record
-from Logic.data_processing import normalize_name, search_similarity, normalize_datetime
+from Logic.data_processing import normalize_name, search_similarity, normalize_datetime, create_time_range
 from Database.database import sb
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -106,18 +106,27 @@ def lookup_reservation(tool_call_id,
                        customer_name: str | None = None,
                        party_size: int | None = None,
                        reservation_time: str | None = None) -> dict:
-    parsed = normalize_datetime(reservation_time)
-    reservation_time_iso = parsed.isoformat() if isinstance(parsed, datetime) else None
-    response = get_record("reservations", {
+
+    filters = {
         "phone_number": phone_number,
         "customer_name": customer_name,
-        "party_size": party_size,
-        "reservation_time": reservation_time_iso
-    })
+        "party_size": party_size
+    }
+
+    if not reservation_time:
+        response = get_record("reservations", filters)
+
+    else:
+        for tolerant_minutes in [15, 30, 60]:
+            reservation_time_range = create_time_range("reservation_time", reservation_time, tolerant_minutes)
+            response = get_record("reservations", filters, ranges = reservation_time_range)
+            if len(response) >= 1:
+                break
+
     return {
         "toolCallId": tool_call_id,
         "result": {
-            "found": bool(response),
+            "found": len(response) > 0,
             "reservations": response
         }
     }
@@ -126,17 +135,24 @@ def lookup_order(tool_call_id,
                  phone_number: str | None = None,
                  pickup_time: str | None = None,
                  customer_name: str | None = None) -> dict:
-    parsed = normalize_datetime(pickup_time)
-    pickup_time_iso = parsed.isoformat() if isinstance(parsed, datetime) else None
-    response = get_record("pickup_orders", {
+
+    filters = {
         "phone_number": phone_number,
-        "pickup_time": pickup_time_iso,
         "customer_name": customer_name
-    })
+    }
+    if not pickup_time:
+        response = get_record("pickup_orders", filters)
+
+    else:
+        for tolerant_minutes in [15, 30, 60]:
+            pickup_time_range = create_time_range("pickup_time", pickup_time, tolerant_minutes)
+            response = get_record("pickup_orders", filters, ranges = pickup_time_range)
+            if len(response) >= 1:
+                break
     return {
         "toolCallId": tool_call_id,
         "result": {
-            "found": bool(response),
+            "found": len(response) > 0,
             "orders": response
         }
     }
