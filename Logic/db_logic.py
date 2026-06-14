@@ -14,7 +14,7 @@ def get_record(table, filters: dict) -> dict | None:
 
     if not response.data:
         return None
-    return response.data[0]
+    return response.data
 
 def get_record_contains(table: str, parameter: str, values: list[str]) -> dict | None:
     response = sb.table(table).select("*").filter(parameter, "cs", json.dumps(values)).execute()

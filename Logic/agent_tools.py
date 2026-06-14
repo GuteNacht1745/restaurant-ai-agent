@@ -24,7 +24,7 @@ def search_menu(tool_call_id, item_number: str | None = None, item_name: str | N
 
     if item_number:
         item_number = item_number.strip().upper()
-        menu_item = get_record("menu", {"item_number": item_number})
+        menu_item = get_record("menu", {"item_number": item_number})[0]
 
     elif item_name:
         item_name = normalize_name(item_name)
@@ -52,12 +52,12 @@ def search_menu(tool_call_id, item_number: str | None = None, item_name: str | N
             }
 
 
-    category = get_record("menu_categories", {"category_id": menu_item["category_id"]})
+    category = get_record("menu_categories", {"category_id": menu_item["category_id"]})[0]
     allowed_extra_ids = menu_item.get("allowed_extra_ids") or []
     available_extras = []
 
     for extra_id in allowed_extra_ids:
-        extra_option = get_record("extra_options", {"extra_id": extra_id})
+        extra_option = get_record("extra_options", {"extra_id": extra_id})[0]
         if extra_option:
             available_extras.append({
                 "extra_name": extra_option["extra_item_name"],
@@ -118,7 +118,7 @@ def lookup_reservation(tool_call_id,
         "toolCallId": tool_call_id,
         "result": {
             "found": bool(response),
-            "reservation": response
+            "reservations": response
         }
     }
 
@@ -137,7 +137,7 @@ def lookup_order(tool_call_id,
         "toolCallId": tool_call_id,
         "result": {
             "found": bool(response),
-            "order": response
+            "orders": response
         }
     }
 
@@ -160,7 +160,7 @@ def update_reservation(tool_call_id: str,
         "toolCallId": tool_call_id,
         "result": {
             "success": response,
-            "status": "Reservation updated successfully." if response else "Reservation update failed."
+            "status": f"Reservation {reservation_id} updated successfully." if response else "Reservation update failed."
         }
     }
 
@@ -181,7 +181,7 @@ def update_order(tool_call_id: str,
         "toolCallId": tool_call_id,
         "result": {
             "success": response,
-            "status": "Order updated successfully." if response else "Order update failed."
+            "status": f"Order {order_id} updated successfully." if response else "Order update failed."
         }
     }
 
@@ -191,7 +191,7 @@ def cancel_reservation(tool_call_id: str, reservation_id: int) -> dict:
         "toolCallId": tool_call_id,
         "result": {
             "success": response,
-            "status": "Reservation cancelled successfully" if response else "Reservation cancellation failed."
+            "status": f"Reservation {reservation_id} cancelled successfully" if response else "Reservation cancellation failed."
         }
     }
 
@@ -201,7 +201,7 @@ def cancel_order(tool_call_id: str, order_id: int) -> dict:
         "toolCallId": tool_call_id,
         "result":{
             "success": response,
-            "status": "Order cancelled successfully" if response else "Order cancellation failed."
+            "status": f"Order {order_id} cancelled successfully" if response else "Order cancellation failed."
         }
     }
 
