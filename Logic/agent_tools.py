@@ -341,5 +341,3 @@ def run_tools(event: dict) -> dict[str, list[dict]]:
     return {
         "results": tool_results
     }
-
-print(lookup_order("123123123", pickup_time = "tomorrow at 7pm"))

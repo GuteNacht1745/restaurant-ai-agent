@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from Logic.agent_tools import run_tools
 from Logic.data_processing import find_missing_field, parse_structured_output
 from Models.reservations import ReservationOutput, CallOutputValidated, ReservationExtraction, \
@@ -6,7 +6,21 @@ from Models.reservations import ReservationOutput, CallOutputValidated, Reservat
 from Logic.db_logic import get_record, list_reservation, insert_record
 import jwt
 import time
-from settings import VAPI_PRIVATE_KEY, VAPI_ORG_ID
+from settings import VAPI_PRIVATE_KEY, VAPI_ORG_ID, WEBHOOK_BEARER_TOKEN
+import secrets
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
+bearer = HTTPBearer()
+
+def verify_api(credentials: HTTPAuthorizationCredentials = Depends(bearer)):
+    if credentials.scheme != "Bearer":
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid auth scheme"
+        )
+
+    if not secrets.compare_digest(credentials.credentials, WEBHOOK_BEARER_TOKEN):
+        raise HTTPException(401, detail = "Unauthorized")
 
 router = APIRouter()
 
@@ -18,7 +32,7 @@ def get_call(reservation_id: int) -> dict:
         if not call:
             raise HTTPException(status_code=404, detail="Reservation not found")
 
-        return call
+        return call[0]
 
     except HTTPException:
         raise
@@ -32,7 +46,7 @@ def get_calls() -> list[ReservationOutput]:
     return list_data.data
 
 @router.post("/webhook")
-def webhook(event: dict) -> dict:
+def webhook(event: dict, _=Depends(verify_api)) -> dict:
 
     event_type = event.get("message", {}).get("type", None)
 
