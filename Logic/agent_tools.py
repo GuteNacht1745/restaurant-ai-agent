@@ -1,9 +1,9 @@
-from Logic.db_logic import get_record, get_record_contains, update_record
+from Logic.db_logic import get_record, get_record_contains, update_record, insert_record, remove_record
 from Logic.data_processing import normalize_name, search_similarity, normalize_datetime, create_time_range
 from Database.database import sb
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from Models.reservations import ReservationUpdate, OrderUpdate
+from Models.reservations import ReservationUpdate, OrderUpdate, ItemValidated, ItemUpdate
 
 
 def verify_scoring(score, raw_text, method, candidate_text) -> None:
@@ -175,7 +175,7 @@ def update_reservation(tool_call_id: str,
     return {
         "toolCallId": tool_call_id,
         "result": {
-            "success": response,
+            "success": bool(response),
             "status": f"Reservation {reservation_id} updated successfully." if response else "Reservation update failed."
         }
     }
@@ -196,7 +196,7 @@ def update_order(tool_call_id: str,
     return {
         "toolCallId": tool_call_id,
         "result": {
-            "success": response,
+            "success": bool(response),
             "status": f"Order {order_id} updated successfully." if response else "Order update failed."
         }
     }
@@ -206,7 +206,7 @@ def cancel_reservation(tool_call_id: str, reservation_id: int) -> dict:
     return {
         "toolCallId": tool_call_id,
         "result": {
-            "success": response,
+            "success": bool(response),
             "status": f"Reservation {reservation_id} cancelled successfully" if response else "Reservation cancellation failed."
         }
     }
@@ -216,8 +216,90 @@ def cancel_order(tool_call_id: str, order_id: int) -> dict:
     return {
         "toolCallId": tool_call_id,
         "result":{
-            "success": response,
+            "success": bool(response),
             "status": f"Order {order_id} cancelled successfully" if response else "Order cancellation failed."
+        }
+    }
+
+def lookup_item(tool_call_id: str,
+                order_id: int,
+                item_number: str | None = None,
+                item_name: str | None = None,
+                variant: str | None = None):
+    response = get_record("pickup_order_items", {
+        "order_id": order_id,
+        "item_number": item_number,
+        "item_name": item_name,
+        "variant": variant
+    })
+    return {
+        "toolCallId": tool_call_id,
+        "result": {
+            "found": len(response) > 0,
+            "items": response
+        }
+    }
+
+def add_item(tool_call_id: str,
+             order_id: int,
+             item_number: str | None = None,
+             item_name: str | None = None,
+             extras: list[str] | None = None,
+             special_request: str | None = None,
+             variant: str | None = None) -> dict:
+
+    if not item_number and not item_name:
+        return {
+            "toolCallId": tool_call_id,
+            "result": {
+                "success": False,
+                "status": "Either item_number or item_name must be provided."
+            }
+        }
+    item_validated = ItemValidated(
+        order_id = order_id,
+        item_number = item_number,
+        item_name = item_name,
+        extras = extras,
+        special_request = special_request,
+        variant = variant
+    )
+    response = insert_record("pickup_order_items", item_validated.model_dump(mode = "json", exclude_none = True))
+    return {
+        "toolCallId": tool_call_id,
+        "result": {
+            "success": bool(response),
+            "status": f"Item {item_number or item_name} added successfully" if bool(response) else "Item add failed."
+        }
+    }
+
+def remove_item(tool_call_id: str, item_id: int) -> dict:
+    response = remove_record("pickup_order_items", "item_id", item_id)
+    return {
+        "toolCallId": tool_call_id,
+        "result": {
+            "success": bool(response),
+            "status": f"Item id {item_id} removed successfully" if bool(response) else "Item remove failed."
+        }
+    }
+
+def modify_item(tool_call_id: str,
+                item_id: int,
+                extras: list[str] | None = None,
+                special_request: str | None = None,
+                variant: str | None = None):
+    updated_data_validated = ItemUpdate(
+        extras = extras,
+        special_request = special_request,
+        variant = variant
+    )
+    response = update_record("pickup_order_items", updated_data_validated.model_dump(mode = "json", exclude_none = True), "item_id", item_id)
+
+    return {
+        "toolCallId": tool_call_id,
+        "result": {
+            "success": bool(response),
+            "status": f"Item id {item_id} updated successfully" if response else f"Item id {item_id} update failed."
         }
     }
 
@@ -229,7 +311,11 @@ TOOL_REGISTRY = {
     "update_reservation": update_reservation,
     "update_order": update_order,
     "cancel_reservation": cancel_reservation,
-    "cancel_order": cancel_order
+    "cancel_order": cancel_order,
+    "lookup_item": lookup_item,
+    "add_item": add_item,
+    "remove_item": remove_item,
+    "modify_item": modify_item
 }
 
 def run_tools(event: dict) -> dict[str, list[dict]]:
@@ -255,3 +341,5 @@ def run_tools(event: dict) -> dict[str, list[dict]]:
     return {
         "results": tool_results
     }
+
+print(lookup_order("123123123", pickup_time = "tomorrow at 7pm"))

@@ -104,7 +104,7 @@ def webhook(event: dict) -> dict:
                 is_complete = is_complete
             )
             order_inserted = insert_record("pickup_orders", order_validated.model_dump(mode = "json", exclude_none = True))
-            order_id = order_inserted.data[0]["order_id"]
+            order_id = order_inserted[0]["order_id"]
 
             for item in (extracted_data.items or []):
                 item_validated = ItemValidated(

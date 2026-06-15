@@ -31,11 +31,15 @@ def list_reservation():
     return sb.table("reservations").select("*").execute()
 
 def insert_record(table, new_data):
-    return sb.table(table).insert(new_data).execute()
+    return sb.table(table).insert(new_data).execute().data
 
 def update_record(table: str, new_data: dict, parameter: str, value) -> bool:
     response = sb.table(table).update(new_data).eq(parameter, value).execute()
-    return bool(response.data)
+    return response.data
+
+def remove_record(table, parameter: str, value):
+    response = sb.table(table).delete().eq(parameter, value).execute()
+    return response.data
 
 
 

@@ -69,3 +69,8 @@ class OrderUpdate(BaseModel):
     customer_name: Optional[str] = None
     pickup_time: Optional[datetime] = None
     special_request: Optional[str] = None
+
+class ItemUpdate(BaseModel):
+    extras: Optional[list] = None
+    special_request: Optional[str] = None
+    variant: Optional[str] = None
